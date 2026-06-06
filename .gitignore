@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+android/app/build/
+android/app/tmp/
+android/build/
+android/app/outputs/
+
+# APK files
+*.apk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# Env / secrets
+.env
+.env.local
+*.keystore
+*.jks
+
+# Debug / temp files
+fnos-cdp-cookies.json
+ws-messages.json
+fnos-*.html
+debug-gallery.html
+overview.md
+
+# Build scripts (local)
+build-android.bat
+
+# Tools scripts (one-off)
+find-video-raw.cjs
+find-video-raw2.cjs
+find-video-stream.cjs
+search-album-bundle.cjs
+search-all-bundles.cjs
+
+# Icon generation temp files
+icon-gen.py
+icon-gen2.py
+icon-gen3.py
+icon-gen4.py
+icon-preview.png
+
+# Gradle wrapper jars (optional, can regenerate)
+# android/gradle/wrapper/gradle-wrapper.jar
+
+# Log files
+*.log
+
+# WorkBuddy internal
+.workbuddy/
