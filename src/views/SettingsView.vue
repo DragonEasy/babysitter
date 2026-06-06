@@ -100,7 +100,7 @@
       <div class="section-card section-card-flat">
         <div class="about-row">
           <span class="about-label">版本</span>
-          <span class="about-value">宝宝管家 v2.0</span>
+          <span class="about-value">宝宝管家 v2.0.1</span>
         </div>
         <div class="about-row">
           <span class="about-label">技术</span>

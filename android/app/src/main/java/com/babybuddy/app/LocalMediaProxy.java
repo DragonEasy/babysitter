@@ -349,6 +349,20 @@ public class LocalMediaProxy extends NanoHTTPD {
                 if (semi > 0) contentType = contentType.substring(0, semi).trim();
             }
 
+            // Fix content type for video streams — HarmonyOS 4.2 WebView's MediaPlayer
+            // is picky about Content-Type. If fnOS returns a generic type (e.g.
+            // "application/octet-stream" or "video/quicktime"), force "video/mp4"
+            // which is the most universally supported format in Android WebView.
+            boolean isVideoUrl = fullUrl.contains("/stream/v/");
+            if (isVideoUrl && (contentType == null ||
+                    contentType.equals("application/octet-stream") ||
+                    contentType.equals("video/quicktime") ||
+                    contentType.equals("video/x-matroska") ||
+                    contentType.equals("video/avi"))) {
+                contentType = "video/mp4";
+                Log.d(TAG, "  Overriding video Content-Type to: " + contentType);
+            }
+
             long contentLength = conn.getContentLengthLong();
             Log.d(TAG, "  Response: " + statusCode + " " + contentType + " len=" + contentLength);
 
@@ -359,11 +373,26 @@ public class LocalMediaProxy extends NanoHTTPD {
 
             String contentRange = conn.getHeaderField("Content-Range");
 
+            // For video streaming, HarmonyOS WebView requires a known Content-Length
+            // and doesn't support chunked Transfer-Encoding well. If contentLength
+            // is unknown (-1) for a video, we need to buffer the entire response
+            // to provide a proper Content-Length header.
+            boolean needFullBuffer = isVideoUrl && contentLength <= 0;
+
             Response resp;
             if (contentLength > 0 && contentLength < 10 * 1024 * 1024) {
                 // Small files (images): buffer in memory for fast delivery
                 byte[] data = readFully(conn.getInputStream(), (int) contentLength);
                 conn.disconnect();
+                resp = newFixedLengthResponse(status, contentType,
+                    new ByteArrayInputStream(data), data.length);
+            } else if (needFullBuffer) {
+                // Video with unknown length — buffer fully to provide Content-Length.
+                // HarmonyOS 4.2 WebView can't handle chunked video responses.
+                Log.d(TAG, "  Buffering video with unknown length for HarmonyOS compat");
+                byte[] data = readFully(conn.getInputStream(), 8 * 1024 * 1024);
+                conn.disconnect();
+                contentLength = data.length;
                 resp = newFixedLengthResponse(status, contentType,
                     new ByteArrayInputStream(data), data.length);
             } else {
@@ -411,10 +440,10 @@ public class LocalMediaProxy extends NanoHTTPD {
         }
     }
 
-    private byte[] readFully(InputStream in, int expectedSize) throws IOException {
-        BufferedInputStream bis = new BufferedInputStream(in, 8192);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(expectedSize);
-        byte[] buf = new byte[8192];
+    private byte[] readFully(InputStream in, int initialBufferSize) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(in, 65536);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(Math.max(initialBufferSize, 65536));
+        byte[] buf = new byte[65536];
         int n;
         while ((n = bis.read(buf)) >= 0) {
             baos.write(buf, 0, n);

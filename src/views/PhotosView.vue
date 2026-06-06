@@ -182,10 +182,13 @@
               :src="getVideoDisplayUrl(previewCurrentPhoto)"
               class="preview-image"
               controls
-              autoplay
               playsinline
               webkit-playsinline
-              preload="auto"
+              x5-video-player-type="h5"
+              x5-video-player-fullscreen="true"
+              preload="metadata"
+              @loadedmetadata="onVideoReady"
+              @canplay="onVideoCanPlay"
               @error="onVideoError"
               @waiting="videoBuffering = true"
               @playing="videoBuffering = false"
@@ -670,6 +673,34 @@ const videoElement = ref(null)
 function getVideoDisplayUrl(photo) {
   if (!photo) return ''
   return buildProxiedVideoUrl(photo) || ''
+}
+
+function onVideoReady() {
+  // Video metadata loaded — try to auto-play.
+  // Some WebView environments (HarmonyOS 4.2) have issues with the autoplay attribute
+  // on <video>. Instead, we manually call play() after metadata is loaded.
+  const video = videoElement.value
+  if (video) {
+    console.log('[Photos] Video metadata loaded, attempting play()')
+    try {
+      const p = video.play()
+      // play() returns a Promise in modern browsers
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => {
+          console.warn('[Photos] Auto-play blocked:', err.name, err.message)
+          // Auto-play was blocked (common on mobile/WebView). User must tap play button.
+          // This is fine — the controls are visible so they can tap play.
+        })
+      }
+    } catch (e) {
+      console.warn('[Photos] play() exception:', e?.message)
+    }
+  }
+}
+
+function onVideoCanPlay() {
+  // Enough data buffered to start playback
+  previewLoading.value = false
 }
 
 function onVideoError(e) {
